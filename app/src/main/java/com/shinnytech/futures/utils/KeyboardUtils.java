@@ -15,14 +15,20 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import com.shinnytech.futures.R;
-import com.shinnytech.futures.application.BaseApplicationLike;
+import com.shinnytech.futures.application.BaseApplication;
 import com.shinnytech.futures.model.bean.futureinfobean.QuoteEntity;
+import com.shinnytech.futures.model.bean.searchinfobean.SearchEntity;
 import com.shinnytech.futures.model.engine.DataManager;
-import com.shinnytech.futures.view.activity.FutureInfoActivity;
+import com.shinnytech.futures.controller.activity.FutureInfoActivity;
+import com.shinnytech.futures.model.engine.LatestFileManager;
 
 import java.lang.reflect.Method;
 
 import static android.content.Context.AUDIO_SERVICE;
+import static com.shinnytech.futures.constants.CommonConstants.COUNTERPARTY_PRICE;
+import static com.shinnytech.futures.constants.CommonConstants.LATEST_PRICE;
+import static com.shinnytech.futures.constants.CommonConstants.MARKET_PRICE;
+import static com.shinnytech.futures.constants.CommonConstants.QUEUED_PRICE;
 
 /**
  * date: 6/2/17
@@ -39,7 +45,7 @@ public class KeyboardUtils {
     private EditText mEditText;
     private String mInstrumentId;
 
-    public KeyboardUtils(Activity activity, int idKeyboard, String instrument_id) {
+    public KeyboardUtils(Activity activity, final int idKeyboard, final String instrument_id) {
         mActivity = (FutureInfoActivity) activity;
         mInstrumentId = instrument_id;
         Keyboard mKeyboard = new Keyboard(mActivity, idKeyboard);
@@ -69,7 +75,7 @@ public class KeyboardUtils {
                     int start = mEditText.length();
                     if (primaryCode == Keyboard.KEYCODE_DELETE) {
                         if (editable.length() > 0) {
-                            if (!"排队价".equals(text) && !"对手价".equals(text) && !"市价".equals(text) && !"最新价".equals(text)) {
+                            if (!QUEUED_PRICE.equals(text) && !COUNTERPARTY_PRICE.equals(text) && !MARKET_PRICE.equals(text) && !LATEST_PRICE.equals(text)) {
                                 editable.delete(start - 1, start);
                             } else {
                                 editable.clear();
@@ -81,45 +87,58 @@ public class KeyboardUtils {
                         hideKeyboard();
                     } else if (primaryCode == mEditText.getContext().getResources().getInteger(R.integer.keycode_line_up_price)) {
                         editable.clear();
-                        editable.insert(0, "排队价");
+                        editable.insert(0, QUEUED_PRICE);
                     } else if (primaryCode == mEditText.getContext().getResources().getInteger(R.integer.keycode_opponent_price)) {
                         editable.clear();
-                        editable.insert(0, "对手价");
+                        editable.insert(0, COUNTERPARTY_PRICE);
                     } else if (primaryCode == mEditText.getContext().getResources().getInteger(R.integer.keycode_last_price)) {
                         editable.clear();
-                        editable.insert(0, "最新价");
+                        editable.insert(0, LATEST_PRICE);
                     } else if (primaryCode == mEditText.getContext().getResources().getInteger(R.integer.keycode_market_price)) {
                         editable.clear();
-                        editable.insert(0, "市价");
+                        editable.insert(0, MARKET_PRICE);
                     } else if (primaryCode == mEditText.getContext().getResources().getInteger(R.integer.keycode_add)) {
                         QuoteEntity quoteEntity = DataManager.getInstance().getRtnData().getQuotes().get(mInstrumentId);
                         switch (text) {
-                            case "排队价":
+                            case QUEUED_PRICE:
                                 if (quoteEntity != null) {
+                                    String ask_price1 = LatestFileManager.saveScaleByPtick(quoteEntity.getAsk_price1(), mInstrumentId);
+                                    String bid_price1 = LatestFileManager.saveScaleByPtick(quoteEntity.getBid_price1(), mInstrumentId);
                                     editable.clear();
-                                    editable.insert(0, MathUtils.subtract(quoteEntity.getBid_price1(), quoteEntity.getAsk_price1()).contains("-") ? quoteEntity.getBid_price1() : quoteEntity.getAsk_price1());
+                                    editable.insert(0, MathUtils.subtract(bid_price1, ask_price1).contains("-") ? bid_price1 : ask_price1);
                                 }
                                 break;
-                            case "对手价":
+                            case COUNTERPARTY_PRICE:
                                 if (quoteEntity != null) {
+                                    String ask_price1 = LatestFileManager.saveScaleByPtick(quoteEntity.getAsk_price1(), mInstrumentId);
+                                    String bid_price1 = LatestFileManager.saveScaleByPtick(quoteEntity.getBid_price1(), mInstrumentId);
                                     editable.clear();
-                                    editable.insert(0, MathUtils.subtract(quoteEntity.getBid_price1(), quoteEntity.getAsk_price1()).contains("-") ? quoteEntity.getAsk_price1() : quoteEntity.getBid_price1());
+                                    editable.insert(0, MathUtils.subtract(bid_price1, ask_price1).contains("-") ? ask_price1 : bid_price1);
                                 }
                                 break;
-                            case "最新价":
+                            case LATEST_PRICE:
                                 if (quoteEntity != null) {
+                                    String last_price = LatestFileManager.saveScaleByPtick(quoteEntity.getLast_price(), mInstrumentId);
                                     editable.clear();
-                                    editable.insert(0, quoteEntity.getLast_price());
+                                    editable.insert(0, last_price);
                                 }
                                 break;
-                            case "市价":
+                            case MARKET_PRICE:
                                 if (quoteEntity != null) {
+                                    String last_price = LatestFileManager.saveScaleByPtick(quoteEntity.getLast_price(), mInstrumentId);
                                     editable.clear();
-                                    editable.insert(0, quoteEntity.getLast_price());
+                                    editable.insert(0, last_price);
                                 }
                                 break;
                             default:
-                                String data = MathUtils.add(editable.toString(), "1");
+                                String data;
+                                if (idKeyboard == R.xml.future_price){
+                                    SearchEntity searchEntity = LatestFileManager.getSearchEntities().get(mInstrumentId);
+                                    String price_tick = searchEntity == null? "0" : searchEntity.getpTick();
+                                    data = MathUtils.add(editable.toString(), price_tick);
+                                }else {
+                                    data = MathUtils.add(editable.toString(), "1");
+                                }
                                 editable.clear();
                                 editable.insert(0, data);
                                 break;
@@ -127,28 +146,34 @@ public class KeyboardUtils {
                     } else if (primaryCode == mEditText.getContext().getResources().getInteger(R.integer.keycode_sub)) {
                         QuoteEntity quoteEntity = DataManager.getInstance().getRtnData().getQuotes().get(mInstrumentId);
                         switch (text) {
-                            case "排队价":
+                            case QUEUED_PRICE:
                                 if (quoteEntity != null) {
+                                    String ask_price1 = LatestFileManager.saveScaleByPtick(quoteEntity.getAsk_price1(), mInstrumentId);
+                                    String bid_price1 = LatestFileManager.saveScaleByPtick(quoteEntity.getBid_price1(), mInstrumentId);
                                     editable.clear();
-                                    editable.insert(0, MathUtils.divide(quoteEntity.getBid_price1(), quoteEntity.getAsk_price1()).contains("-") ? quoteEntity.getBid_price1() : quoteEntity.getAsk_price1());
+                                    editable.insert(0, MathUtils.subtract(bid_price1, ask_price1).contains("-") ? bid_price1 : ask_price1);
                                 }
                                 break;
-                            case "对手价":
+                            case COUNTERPARTY_PRICE:
                                 if (quoteEntity != null) {
+                                    String ask_price1 = LatestFileManager.saveScaleByPtick(quoteEntity.getAsk_price1(), mInstrumentId);
+                                    String bid_price1 = LatestFileManager.saveScaleByPtick(quoteEntity.getBid_price1(), mInstrumentId);
                                     editable.clear();
-                                    editable.insert(0, MathUtils.divide(quoteEntity.getBid_price1(), quoteEntity.getAsk_price1()).contains("-") ? quoteEntity.getAsk_price1() : quoteEntity.getBid_price1());
+                                    editable.insert(0, MathUtils.subtract(bid_price1, ask_price1).contains("-") ? ask_price1 : bid_price1);
                                 }
                                 break;
-                            case "最新价":
+                            case LATEST_PRICE:
                                 if (quoteEntity != null) {
+                                    String last_price = LatestFileManager.saveScaleByPtick(quoteEntity.getLast_price(), mInstrumentId);
                                     editable.clear();
-                                    editable.insert(0, quoteEntity.getLast_price());
+                                    editable.insert(0, last_price);
                                 }
                                 break;
-                            case "市价":
+                            case MARKET_PRICE:
                                 if (quoteEntity != null) {
+                                    String last_price = LatestFileManager.saveScaleByPtick(quoteEntity.getLast_price(), mInstrumentId);
                                     editable.clear();
-                                    editable.insert(0, quoteEntity.getLast_price());
+                                    editable.insert(0, last_price);
                                 }
                                 break;
                             default:
@@ -156,7 +181,14 @@ public class KeyboardUtils {
                                 if (mEditText.getSelectionStart() == 0) {
                                     editable.insert(0, "-");
                                 } else {
-                                    String data = MathUtils.subtract(editable.toString(), "1");
+                                    String data;
+                                    if (idKeyboard == R.xml.future_price){
+                                        SearchEntity searchEntity = LatestFileManager.getSearchEntities().get(mInstrumentId);
+                                        String price_tick = searchEntity == null? "0" : searchEntity.getpTick();
+                                        data = MathUtils.subtract(editable.toString(), price_tick);
+                                    }else {
+                                        data = MathUtils.subtract(editable.toString(), "1");
+                                    }
                                     editable.clear();
                                     editable.insert(0, data);
                                 }
@@ -165,7 +197,7 @@ public class KeyboardUtils {
                     } else {
                         String insertStr = Character.toString((char) primaryCode);
                         String str = editable.toString();
-                        if ("排队价".equals(text) || "对手价".equals(text) || "市价".equals(text) || "最新价".equals(text) || mIsInit) {
+                        if (QUEUED_PRICE.equals(text) || COUNTERPARTY_PRICE.equals(text) || MARKET_PRICE.equals(text) || LATEST_PRICE.equals(text) || mIsInit) {
                             //添加负号功能
                             if ("-".equals(str)) {
                                 if ((!".".equals(insertStr)) || (".".equals(insertStr) && !text.contains(".")))
@@ -216,6 +248,10 @@ public class KeyboardUtils {
         });
     }
 
+    public void refreshInstrumentId(String instrumentId){
+        mInstrumentId = instrumentId;
+    }
+
     /**
      * 隐藏系统键盘
      */
@@ -244,7 +280,7 @@ public class KeyboardUtils {
     }
 
     private void playClick(int keyCode) {
-        AudioManager am = (AudioManager) BaseApplicationLike.getContext().getSystemService(AUDIO_SERVICE);
+        AudioManager am = (AudioManager) BaseApplication.getContext().getSystemService(AUDIO_SERVICE);
         if (am != null)
             switch (keyCode) {
                 case 32:
@@ -262,7 +298,7 @@ public class KeyboardUtils {
     }
 
     public void hideKeyboard() {
-        Animation mShowAction = AnimationUtils.loadAnimation(BaseApplicationLike.getContext(), R.anim.keyboard_in);
+        Animation mShowAction = AnimationUtils.loadAnimation(BaseApplication.getContext(), R.anim.keyboard_in);
         View tab = mActivity.findViewById(R.id.rg_tab_up);
         tab.setVisibility(View.VISIBLE);
         tab.startAnimation(mShowAction);
@@ -274,7 +310,7 @@ public class KeyboardUtils {
     }
 
     public void showKeyboard() {
-        Animation mShowAction = AnimationUtils.loadAnimation(BaseApplicationLike.getContext(), R.anim.keyboard_in);
+        Animation mShowAction = AnimationUtils.loadAnimation(BaseApplication.getContext(), R.anim.keyboard_in);
         View tab = mActivity.findViewById(R.id.rg_tab_up);
         tab.setVisibility(View.GONE);
         View content = mActivity.findViewById(R.id.fl_content_up);

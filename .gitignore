@@ -8,6 +8,12 @@
 # Java class files
 *.class
 
+# Java files
+app/src/main/java/com/shinnytech/futures/constants/LocalCommonConstants.java
+
+# MacOS files
+.DS_Store
+
 # Generated files
 bin/
 gen/

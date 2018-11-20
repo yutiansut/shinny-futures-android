@@ -3,8 +3,7 @@ package com.shinnytech.futures.model.engine;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.google.gson.Gson;
-import com.shinnytech.futures.application.BaseApplicationLike;
+import com.shinnytech.futures.application.BaseApplication;
 import com.shinnytech.futures.model.bean.accountinfobean.AccountEntity;
 import com.shinnytech.futures.model.bean.accountinfobean.BankEntity;
 import com.shinnytech.futures.model.bean.accountinfobean.BrokerEntity;
@@ -34,13 +33,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
 
-import static com.shinnytech.futures.constants.CommonConstants.MESSAGE;
-import static com.shinnytech.futures.constants.CommonConstants.MESSAGE_BROKER_INFO;
-import static com.shinnytech.futures.constants.CommonConstants.MESSAGE_LOGIN;
-import static com.shinnytech.futures.constants.CommonConstants.MESSAGE_TRADE;
-import static com.shinnytech.futures.constants.CommonConstants.TRANSACTION_URL;
-import static com.shinnytech.futures.model.service.WebSocketService.BROADCAST;
-import static com.shinnytech.futures.model.service.WebSocketService.BROADCAST_TRANSACTION;
+import static com.shinnytech.futures.constants.CommonConstants.MD_MESSAGE;
+import static com.shinnytech.futures.constants.CommonConstants.TD_MESSAGE_LOGIN;
+import static com.shinnytech.futures.constants.CommonConstants.TD_MESSAGE_SETTLEMENT;
+import static com.shinnytech.futures.constants.CommonConstants.TD_MESSAGE;
+import static com.shinnytech.futures.model.service.WebSocketService.MD_BROADCAST;
+import static com.shinnytech.futures.model.service.WebSocketService.TD_BROADCAST;
 
 /**
  * date: 7/9/17
@@ -50,26 +48,34 @@ import static com.shinnytech.futures.model.service.WebSocketService.BROADCAST_TR
  * state: basically done
  */
 public class DataManager {
+
+    private SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+
+    private DataManager() {
+        simpleDateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
+    }
+
+    public static DataManager getInstance() {
+        return INSTANCE;
+    }
+
+    private static final DataManager INSTANCE = new DataManager();
+
     /**
      * date: 7/9/17
      * description: 账户信息实例
      */
-    public static final TradeBean TRADE = new TradeBean();
+    private TradeBean TRADE = new TradeBean();
     /**
      * date: 7/9/17
      * description: 单例模式，行情数据类实例
      */
-    private static final FutureBean RTN_DATA = new FutureBean();
+    private FutureBean RTN_DATA = new FutureBean();
     /**
      * date: 7/9/17
      * description: 账户登录返回信息实例
      */
-    private static final BrokerEntity BROKER = new BrokerEntity();
-    /**
-     * date: 7/9/17
-     * description: 单例模式，本解析类实例
-     */
-    private static final DataManager INSTANCE = new DataManager();
+    private BrokerEntity BROKER = new BrokerEntity();
     /**
      * date: 7/7/17
      * description: 用于判断是否登录成功的全局标志
@@ -82,20 +88,22 @@ public class DataManager {
     public String USER_ID = "";
 
     /**
-     * date: 9/7/18
-     * description: 交易服务器路径
+     * date: 2018/11/7
+     * description: appVersion
      */
-    public String TRANSACTION_URL_FULL = TRANSACTION_URL + "0";
+    public String APP_VERSION= "";
 
-    private SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
+    /**
+     * date: 2018/11/7
+     * description: appCode
+     */
+    public int APP_CODE= 0;
 
-    private DataManager() {
-        simpleDateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
-    }
-
-    public static DataManager getInstance() {
-        return INSTANCE;
-    }
+    /**
+     * date: 2018/11/7
+     * description: 用户下单价格类型
+     */
+    public String PRICE_TYPE = "对手价";
 
     /**
      * date: 6/16/17
@@ -110,7 +118,7 @@ public class DataManager {
         return TRADE;
     }
 
-    public BrokerEntity getLogin() {
+    public BrokerEntity getBroker() {
         return BROKER;
     }
 
@@ -156,8 +164,8 @@ public class DataManager {
                     }
                 }
             }
-            if (BaseApplicationLike.getWebSocketService() != null)
-                BaseApplicationLike.getWebSocketService().sendMessage(MESSAGE, BROADCAST);
+            if (BaseApplication.getWebSocketService() != null)
+                BaseApplication.getWebSocketService().sendMessage(MD_MESSAGE, MD_BROADCAST);
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -349,24 +357,7 @@ public class DataManager {
      * author: chenli
      * description: 刷新登录信息
      */
-    public void refreshTradeBean(String msg) throws JSONException {
-        final JSONObject tradeBeanObject = new JSONObject(msg);
-        switch (tradeBeanObject.optString("aid")) {
-            case "rtn_brokers":
-                BrokerEntity brokerInfo = new Gson().fromJson(msg, BrokerEntity.class);
-                BROKER.setBrokers(brokerInfo.getBrokers());
-                if (BaseApplicationLike.getWebSocketService() != null)
-                    BaseApplicationLike.getWebSocketService().sendMessage(MESSAGE_BROKER_INFO, BROADCAST_TRANSACTION);
-                break;
-            case "rtn_data":
-                parseTradeData(tradeBeanObject);
-                break;
-            default:
-                break;
-        }
-    }
-
-    private void parseTradeData(JSONObject accountBeanObject) {
+    public void refreshTradeBean(JSONObject accountBeanObject) {
         try {
             JSONArray dataArray = accountBeanObject.getJSONArray("data");
             for (int i = 0; i < dataArray.length(); i++) {
@@ -382,12 +373,19 @@ public class DataManager {
                                 String notifyKey = notifyIterator.next();
                                 JSONObject notify = data.getJSONObject(notifyKey);
                                 final String content = notify.optString("content");
-                                new Handler(Looper.getMainLooper()).post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        ToastNotificationUtils.showToast(BaseApplicationLike.getContext(), content);
-                                    }
-                                });
+                                String type = notify.optString("type");
+                                if ("SETTLEMENT".equals(type)){
+                                    BROKER.setSettlement(content);
+                                    if (BaseApplication.getWebSocketService() != null)
+                                        BaseApplication.getWebSocketService().sendMessage(TD_MESSAGE_SETTLEMENT, TD_BROADCAST);
+                                }else {
+                                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            ToastNotificationUtils.showToast(BaseApplication.getContext(), content);
+                                        }
+                                    });
+                                }
                             }
                             break;
                         case "trade":
@@ -424,16 +422,16 @@ public class DataManager {
                                             String userId = user.getJSONObject("session").optString("user_id");
                                             USER_ID = userId;
                                             userEntity.setUser_id(userId);
-                                            if (BaseApplicationLike.getWebSocketService() != null && !IS_LOGIN )
-                                                BaseApplicationLike.getWebSocketService().sendMessage(MESSAGE_LOGIN, BROADCAST_TRANSACTION);
+                                            if (BaseApplication.getWebSocketService() != null && !IS_LOGIN )
+                                                BaseApplication.getWebSocketService().sendMessage(TD_MESSAGE_LOGIN, TD_BROADCAST);
                                             break;
                                         default:
                                             break;
                                     }
                                 }
                                 userEntities.put(userKey, userEntity);
-                                if (BaseApplicationLike.getWebSocketService() != null)
-                                    BaseApplicationLike.getWebSocketService().sendMessage(MESSAGE_TRADE, BROADCAST_TRANSACTION);
+                                if (BaseApplication.getWebSocketService() != null)
+                                    BaseApplication.getWebSocketService().sendMessage(TD_MESSAGE, TD_BROADCAST);
                             }
                             break;
                         default:
