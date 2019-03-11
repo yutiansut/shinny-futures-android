@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE"/>
 
     <!-- SD卡读写入数据权限 -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -115,8 +116,11 @@
         <activity android:name=".controller.activity.BrokerListActivity" />
         <activity android:name=".controller.activity.OpenAccountActivity" />
         <activity android:name=".controller.activity.SettingActivity" />
-        <activity android:name=".controller.activity.ParaChangeActivity"
-            android:theme="@style/LoginActivityTheme"></activity>
+        <activity
+            android:name=".controller.activity.ParaChangeActivity"
+            android:theme="@style/LoginActivityTheme" />
+        <activity android:name=".controller.activity.KlineDurationActivity" />
+        <activity android:name=".controller.activity.AddKlineDurationActivity"></activity>
     </application>
 
 </manifest>
