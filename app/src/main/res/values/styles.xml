@@ -5,7 +5,7 @@
         <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-        <item name="colorAccent">@color/colorAccent</item>
+        <item name="colorAccent">@color/launch</item>
         <item name="android:listDivider">@drawable/divider_quote</item>
         <item name="android:windowBackground">@null</item>
 
@@ -36,7 +36,8 @@
 
     <!-- 侧滑栏主题 -->
     <style name="NavigationTheme" parent="AppTheme">
-        <item name="android:listPreferredItemHeightSmall">30dp</item>
+        <item name="android:listPreferredItemHeightSmall">40dp</item>
+        <item name="android:listDivider">@color/navigation_divider</item>
     </style>
 
     <!--下单/撤单/自选合约弹出框,固定大小-->
@@ -68,7 +69,7 @@
 
     <style name="RadioButtonTabUp">
         <item name="android:layout_width">0dp</item>
-        <item name="android:layout_weight">1</item>
+        <item name="android:layout_weight">1.5</item>
         <item name="android:layout_height">30dp</item>
         <item name="android:button">@null</item>
         <item name="android:textColor">@drawable/txtcolor_yellow2gray_check</item>
@@ -86,7 +87,7 @@
     <style name="RadioButtonTabDown">
         <item name="android:layout_weight">1</item>
         <item name="android:layout_width">0dp</item>
-        <item name="android:layout_height">30dp</item>
+        <item name="android:layout_height">40dp</item>
         <item name="android:button">@null</item>
         <item name="android:textColor">@drawable/txtcolor_yellow2gray_check</item>
         <item name="android:background">@drawable/bgcolor_gray2yellow_check_down</item>
@@ -96,7 +97,7 @@
     <style name="RadioButtonTabDownTransaction">
         <item name="android:layout_weight">1</item>
         <item name="android:layout_width">0dp</item>
-        <item name="android:layout_height">30dp</item>
+        <item name="android:layout_height">40dp</item>
         <item name="android:button">@null</item>
         <item name="android:textColor">@drawable/txtcolor_yellow2white_check</item>
         <item name="android:background">@drawable/bgcolor_gray2yellow_check_down_transaction</item>

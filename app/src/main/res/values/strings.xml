@@ -5,18 +5,27 @@
     <string name="main_activity_closeDrawer">close</string>
 
     <!--related to future info activity -->
-    <string name="future_info_activity_current_day">当日</string>
-    <string name="future_info_activity_day">日线</string>
-    <string name="future_info_activity_hour">小时</string>
-    <string name="future_info_activity_five_minute">5分钟</string>
+    <string name="future_info_activity_current_day">分时</string>
+    <string name="future_info_activity_day">1日</string>
+    <string name="future_info_activity_hour">1时</string>
+    <string name="future_info_activity_minute">5分</string>
+    <string name="future_info_activity_second">3秒</string>
     <string name="future_info_activity_set">设置</string>
-    <string name="future_info_activity_handicap">信息</string>
-    <string name="future_info_activity_position">持仓</string>
-    <string name="future_info_activity_order">委托</string>
-    <string name="future_info_activity_transaction">交易</string>
+    <string name="future_info_activity_handicap_up">盘口▴</string>
+    <string name="future_info_activity_position_up">持仓▴</string>
+    <string name="future_info_activity_order_up">委托▴</string>
+    <string name="future_info_activity_transaction_up">交易▴</string>
+    <string name="future_info_activity_handicap_down">盘口▾</string>
+    <string name="future_info_activity_position_down">持仓▾</string>
+    <string name="future_info_activity_order_down">委托▾</string>
+    <string name="future_info_activity_transaction_down">交易▾</string>
     <string name="future_info_activity_position_set_up">持仓</string>
     <string name="future_info_activity_order_set_up">挂单</string>
     <string name="future_info_activity_average_set_up">均线</string>
+    <string name="future_info_activity_md_set_up">五档</string>
+
+    <!--Strings related to change password activity-->
+    <string name="change_password_activity_btn_change">修改</string>
 
     <!-- Strings related to login activity -->
     <string name="login_activity_btn_login">登录</string>
@@ -32,6 +41,7 @@
     <string name="search_activity_title">主力合约</string>
 
     <!--related to account activity-->
+    <string name="account_activity_user">用户</string>
     <string name="account_activity_date">日期</string>
     <string name="account_activity_static_balance">=静态权益</string>
     <string name="account_activity_close_profit">+平仓盈亏</string>
@@ -122,6 +132,7 @@
 
     <!--related to dialog change quote view-->
     <string name="select_from_optional">从自选列表中选择合约</string>
+    <string name="drag_optional">自选合约管理</string>
 
     <!--related to confirm activity-->
     <string name="confirm_activity_title">账单确认</string>
@@ -147,5 +158,78 @@
     </string>
     <string name="welcome_activity_disagree">不同意</string>
     <string name="welcome_activity_agree">同意</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- Example General settings -->
+    <string name="pref_header_general">General</string>
+
+    <string name="pref_title_social_recommendations">Enable social recommendations</string>
+    <string name="pref_description_social_recommendations">Recommendations for people to contact
+        based on your message history
+    </string>
+
+    <string name="pref_title_display_name">Display name</string>
+    <string name="pref_default_display_name">John Smith</string>
+
+    <string name="pref_title_add_friends_to_messages">Add friends to messages</string>
+    <string-array name="pref_example_list_titles">
+        <item>Always</item>
+        <item>When possible</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_example_list_values">
+        <item>1</item>
+        <item>0</item>
+        <item>-1</item>
+    </string-array>
+
+    <!-- Example settings for Data & Sync -->
+    <string name="pref_header_data_sync">Data &amp; sync</string>
+
+    <string name="pref_title_sync_frequency">Sync frequency</string>
+    <string-array name="pref_sync_frequency_titles">
+        <item>15 minutes</item>
+        <item>30 minutes</item>
+        <item>1 hour</item>
+        <item>3 hours</item>
+        <item>6 hours</item>
+        <item>Never</item>
+    </string-array>
+    <string-array name="pref_sync_frequency_values">
+        <item>15</item>
+        <item>30</item>
+        <item>60</item>
+        <item>180</item>
+        <item>360</item>
+        <item>-1</item>
+    </string-array>
+
+    <string-array name="list_preference_entries">
+        <item>Entry 1</item>
+        <item>Entry 2</item>
+        <item>Entry 3</item>
+    </string-array>
+
+    <string-array name="list_preference_entry_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <string-array name="multi_select_list_preference_default_value" />
+
+    <string name="pref_title_system_sync_settings">System sync settings</string>
+
+    <!-- Example settings for Notifications -->
+    <string name="pref_header_notifications">Notifications</string>
+
+    <string name="pref_title_new_message_notifications">New message notifications</string>
+
+    <string name="pref_title_ringtone">Ringtone</string>
+    <string name="pref_ringtone_silent">Silent</string>
+
+    <string name="pref_title_vibrate">Vibrate</string>
 
 </resources>

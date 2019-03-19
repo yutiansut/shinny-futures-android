@@ -137,14 +137,20 @@ public class KlineEntity {
     }
 
     public static class BindingEntity {
-        private Map<String, String> KLineNum = new HashMap<>();
+        private Map<String, String> bindingData = new HashMap<>();
 
-        public Map<String, String> getKLineNum() {
-            return KLineNum;
+        public Map<String, String> getBindingData() {
+            return bindingData;
         }
 
-        public void setKLineNum(Map<String, String> KLineNum) {
-            this.KLineNum = KLineNum;
+        public void setBindingData(Map<String, String> bindingData) {
+            this.bindingData = bindingData;
         }
+    }
+
+    @Override
+    public String toString() {
+        return "last_id"+last_id+"\n"+"trading_day_start_id"+trading_day_start_id+"\n"+
+                "trading_day_end_id"+trading_day_end_id;
     }
 }

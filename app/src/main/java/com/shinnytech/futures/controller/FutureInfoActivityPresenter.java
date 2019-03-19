@@ -1,11 +1,8 @@
 package com.shinnytech.futures.controller;
 
 import android.app.Dialog;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.support.v4.app.Fragment;
@@ -14,6 +11,7 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.widget.GridLayoutManager;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.view.Gravity;
@@ -23,14 +21,15 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.CompoundButton;
 import android.widget.PopupWindow;
-import android.widget.RadioGroup;
 import android.widget.Switch;
 import android.widget.TextView;
 
 import com.shinnytech.futures.R;
+import com.shinnytech.futures.application.BaseApplication;
 import com.shinnytech.futures.constants.CommonConstants;
 import com.shinnytech.futures.controller.activity.FutureInfoActivity;
 import com.shinnytech.futures.controller.activity.LoginActivity;
+import com.shinnytech.futures.controller.fragment.BaseChartFragment;
 import com.shinnytech.futures.controller.fragment.CurrentDayFragment;
 import com.shinnytech.futures.controller.fragment.HandicapFragment;
 import com.shinnytech.futures.controller.fragment.KlineFragment;
@@ -39,9 +38,12 @@ import com.shinnytech.futures.controller.fragment.PositionFragment;
 import com.shinnytech.futures.controller.fragment.TransactionFragment;
 import com.shinnytech.futures.databinding.ActivityFutureInfoBinding;
 import com.shinnytech.futures.model.adapter.DialogAdapter;
+import com.shinnytech.futures.model.adapter.KlineDurationTitleAdapter;
 import com.shinnytech.futures.model.adapter.ViewPagerFragmentAdapter;
 import com.shinnytech.futures.model.bean.eventbusbean.IdEvent;
 import com.shinnytech.futures.model.bean.eventbusbean.SetUpEvent;
+import com.shinnytech.futures.model.bean.eventbusbean.VisibilityEvent;
+import com.shinnytech.futures.model.bean.futureinfobean.QuoteEntity;
 import com.shinnytech.futures.model.bean.searchinfobean.SearchEntity;
 import com.shinnytech.futures.model.engine.DataManager;
 import com.shinnytech.futures.model.engine.LatestFileManager;
@@ -49,7 +51,6 @@ import com.shinnytech.futures.model.listener.SimpleRecyclerViewItemClickListener
 import com.shinnytech.futures.utils.DividerGridItemDecorationUtils;
 import com.shinnytech.futures.utils.KeyboardUtils;
 import com.shinnytech.futures.utils.LogUtils;
-import com.shinnytech.futures.utils.NetworkUtils;
 import com.shinnytech.futures.utils.SPUtils;
 
 import org.greenrobot.eventbus.EventBus;
@@ -58,17 +59,37 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static com.shinnytech.futures.constants.CommonConstants.ACTIVITY_TYPE;
+import static com.shinnytech.futures.constants.CommonConstants.CONFIG_AVERAGE_LINE;
+import static com.shinnytech.futures.constants.CommonConstants.CONFIG_MD5;
+import static com.shinnytech.futures.constants.CommonConstants.CONFIG_ORDER_LINE;
+import static com.shinnytech.futures.constants.CommonConstants.CONFIG_POSITION_LINE;
 import static com.shinnytech.futures.constants.CommonConstants.CURRENT_DAY_FRAGMENT;
 import static com.shinnytech.futures.constants.CommonConstants.DAY_FRAGMENT;
 import static com.shinnytech.futures.constants.CommonConstants.HOUR_FRAGMENT;
-import static com.shinnytech.futures.constants.CommonConstants.KLINE_DAY;
-import static com.shinnytech.futures.constants.CommonConstants.KLINE_HOUR;
-import static com.shinnytech.futures.constants.CommonConstants.KLINE_MINUTE;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_10_MINUTE;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_10_SECOND;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_15_MINUTE;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_15_SECOND;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_1_DAY;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_1_HOUR;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_1_MINUTE;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_20_SECOND;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_28_DAY;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_2_HOUR;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_2_MINUTE;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_30_MINUTE;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_30_SECOND;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_3_MINUTE;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_3_SECOND;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_4_HOUR;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_5_MINUTE;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_5_SECOND;
+import static com.shinnytech.futures.constants.CommonConstants.KLINE_7_DAY;
 import static com.shinnytech.futures.constants.CommonConstants.MINUTE_FRAGMENT;
 import static com.shinnytech.futures.constants.CommonConstants.ORDER_JUMP_TO_LOG_IN_ACTIVITY;
 import static com.shinnytech.futures.constants.CommonConstants.POSITION_JUMP_TO_LOG_IN_ACTIVITY;
+import static com.shinnytech.futures.constants.CommonConstants.SECOND_FRAGMENT;
 import static com.shinnytech.futures.constants.CommonConstants.TRANSACTION_JUMP_TO_LOG_IN_ACTIVITY;
-import static com.shinnytech.futures.model.receiver.NetworkReceiver.NETWORK_STATE;
 
 /**
  * Created on 1/17/18.
@@ -104,6 +125,12 @@ public class FutureInfoActivityPresenter {
      */
     private Switch mAverage;
     /**
+     * date: 2019/2/27
+     * author: chenli
+     * description: 五档行情开关
+     */
+    private Switch mMD5;
+    /**
      * date: 7/3/17
      * description: 持仓开关状态
      */
@@ -118,19 +145,30 @@ public class FutureInfoActivityPresenter {
      * description: 均线开关状态
      */
     private boolean mIsAverage;
+    /**
+     * date: 2019/2/27
+     * author: chenli
+     * description: 五档行情开关状态
+     */
+    private boolean mIsMD5;
     private ActivityFutureInfoBinding mBinding;
     private FutureInfoActivity mFutureInfoActivity;
     private Context sContext;
     private Toolbar mToolbar;
     private TextView mToolbarTitle;
     private FragmentManager mFragmentManager;
-    private Fragment mCurFragment;
-    private Drawable mRightDrawable;
+    public Drawable mRightDrawable;
     private int mNav_position;
-    private Dialog mDialog;
-    private RecyclerView mRecyclerView;
-    private DialogAdapter mDialogAdapter;
-    private BroadcastReceiver mReceiver;
+    private Dialog mDialogOptional;
+    private RecyclerView mRecyclerViewOptional;
+    private DialogAdapter mDialogAdapterOptional;
+    private String[] mKlineTitle = new String[]{"3秒", "5秒", "10秒", "15秒", "20秒", "30秒", "1分钟", "2分钟", "3分钟",
+            "5分钟", "10分钟", "15分钟", "30分钟", "1小时", "2小时", "4小时", "1日", "1周", "4周"};
+    private String[] mKlineDuration = new String[]{KLINE_3_SECOND, KLINE_5_SECOND, KLINE_10_SECOND,
+            KLINE_15_SECOND, KLINE_20_SECOND, KLINE_30_SECOND, KLINE_1_MINUTE, KLINE_2_MINUTE, KLINE_3_MINUTE,
+            KLINE_5_MINUTE, KLINE_10_MINUTE, KLINE_15_MINUTE, KLINE_30_MINUTE, KLINE_1_HOUR, KLINE_2_HOUR,
+            KLINE_4_HOUR, KLINE_1_DAY, KLINE_7_DAY, KLINE_28_DAY};
+    private final KlineDurationTitleAdapter mKlineDurationTitleAdapter;
 
     public FutureInfoActivityPresenter(FutureInfoActivity futureInfoActivity, Context context, ActivityFutureInfoBinding binding, Toolbar toolbar, TextView toolbarTitle) {
         this.mBinding = binding;
@@ -140,13 +178,10 @@ public class FutureInfoActivityPresenter {
         this.sContext = context;
 
         mFragmentManager = mFutureInfoActivity.getSupportFragmentManager();
-        if (mCurFragment == null) {
-            Fragment currentDayFragment = new CurrentDayFragment();
-            mFragmentManager.beginTransaction().
-                    setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).
-                    add(R.id.fl_content_up, currentDayFragment, CommonConstants.CURRENT_DAY_FRAGMENT).commit();
-            mCurFragment = currentDayFragment;
-        }
+        BaseChartFragment currentDayFragment = new CurrentDayFragment();
+        mFragmentManager.beginTransaction().
+                setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).
+                add(R.id.fl_content_up, currentDayFragment, CommonConstants.CURRENT_DAY_FRAGMENT).commit();
 
         Intent intent = mFutureInfoActivity.getIntent();
         mInstrumentId = intent.getStringExtra("instrument_id");
@@ -165,16 +200,49 @@ public class FutureInfoActivityPresenter {
         if (mRightDrawable != null)
             mRightDrawable.setBounds(0, 0, mRightDrawable.getMinimumWidth(), mRightDrawable.getMinimumHeight());
 
+        //判断有无五档行情
+        QuoteEntity quoteEntity = DataManager.getInstance().getRtnData().getQuotes().get(mInstrumentId);
+        if (quoteEntity != null && quoteEntity.getAsk_price5() == null){
+            SPUtils.putAndApply(sContext, CONFIG_MD5, false);
+        }
         //初始化开关状态
-        if (SPUtils.contains(sContext, "isPosition")) {
-            mIsPosition = (boolean) SPUtils.get(sContext, "isPosition", true);
-        }else mIsPosition = true;
-        if (SPUtils.contains(sContext, "isPending")) {
-            mIsPending = (boolean) SPUtils.get(sContext, "isPending", true);
-        }else mIsPending = true;
-        if (SPUtils.contains(sContext, "isAverage")) {
-            mIsAverage = (boolean) SPUtils.get(sContext, "isAverage", true);
-        }else mIsAverage = true;
+        mIsPosition = (boolean) SPUtils.get(sContext, CONFIG_POSITION_LINE, true);
+        mIsPending = (boolean) SPUtils.get(sContext, CONFIG_ORDER_LINE, true);
+        mIsAverage = (boolean) SPUtils.get(sContext, CONFIG_AVERAGE_LINE, true);
+        mIsMD5 = (boolean) SPUtils.get(sContext, CONFIG_MD5, true);
+
+        //显示五档行情
+        if (!mInstrumentId.contains("SHFE") && !mInstrumentId.contains("INE"))
+            mBinding.md.setVisibility(View.GONE);
+        else if (mIsMD5) mBinding.md.setVisibility(View.VISIBLE);
+        else mBinding.md.setVisibility(View.GONE);
+
+        //控制图表显示
+        if (DataManager.getInstance().IS_SHOW_VP_CONTENT){
+            mBinding.vpInfoContent.setVisibility(View.VISIBLE);
+            mBinding.rbHandicapInfo.setText(R.string.future_info_activity_handicap_down);
+            mBinding.rbPositionInfo.setText(R.string.future_info_activity_position_down);
+            mBinding.rbOrderInfo.setText(R.string.future_info_activity_order_down);
+            mBinding.rbTransactionInfo.setText(R.string.future_info_activity_transaction_down);
+        }else {
+            mBinding.vpInfoContent.setVisibility(View.GONE);
+            mBinding.rbHandicapInfo.setText(R.string.future_info_activity_handicap_up);
+            mBinding.rbPositionInfo.setText(R.string.future_info_activity_position_up);
+            mBinding.rbOrderInfo.setText(R.string.future_info_activity_order_up);
+            mBinding.rbTransactionInfo.setText(R.string.future_info_activity_transaction_up);
+        }
+
+        //初始化K线类型
+        String durationPre = (String) SPUtils.get(BaseApplication.getContext(), CommonConstants.CONFIG_KLINE_DURATION_DEFAULT, "");
+        String[] durations = durationPre.split(",");
+        List<String> list = new ArrayList<>();
+        list.add("分时图");
+        for (String data: durations) {
+            list.add(data);
+        }
+        mKlineDurationTitleAdapter = new KlineDurationTitleAdapter(sContext, list);
+        mBinding.rvDurationTitle.setLayoutManager(new LinearLayoutManager(sContext, LinearLayoutManager.HORIZONTAL, false));
+        mBinding.rvDurationTitle.setAdapter(mKlineDurationTitleAdapter);
 
         //初始化盘口、持仓、挂单、交易切换容器，fragment实例保存，有生命周期的变化，默认情况下屏幕外初始化两个fragment
         List<Fragment> fragmentList = new ArrayList<>();
@@ -192,6 +260,12 @@ public class FutureInfoActivityPresenter {
         if (mNav_position == 1) {
             mBinding.vpInfoContent.setCurrentItem(1, false);
             mBinding.rbPositionInfo.setChecked(true);
+            DataManager.getInstance().IS_SHOW_VP_CONTENT = true;
+            mBinding.vpInfoContent.setVisibility(View.VISIBLE);
+            mBinding.rbHandicapInfo.setText(R.string.future_info_activity_handicap_down);
+            mBinding.rbPositionInfo.setText(R.string.future_info_activity_position_down);
+            mBinding.rbOrderInfo.setText(R.string.future_info_activity_order_down);
+            mBinding.rbTransactionInfo.setText(R.string.future_info_activity_transaction_down);
         } else {
             mBinding.vpInfoContent.setCurrentItem(0, false);
             mBinding.rbHandicapInfo.setChecked(true);
@@ -208,11 +282,11 @@ public class FutureInfoActivityPresenter {
         mToolbarTitle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mDialog == null) {
+                if (mDialogOptional == null) {
                     //初始化自选合约弹出框
-                    mDialog = new Dialog(mFutureInfoActivity, R.style.Theme_Light_Dialog);
+                    mDialogOptional = new Dialog(mFutureInfoActivity, R.style.Theme_Light_Dialog);
                     View viewDialog = View.inflate(mFutureInfoActivity, R.layout.view_dialog_optional_quote, null);
-                    Window dialogWindow = mDialog.getWindow();
+                    Window dialogWindow = mDialogOptional.getWindow();
                     if (dialogWindow != null) {
                         dialogWindow.getDecorView().setPadding(0, 0, 0, 0);
                         WindowManager.LayoutParams lp = dialogWindow.getAttributes();
@@ -221,16 +295,19 @@ public class FutureInfoActivityPresenter {
                         lp.height = WindowManager.LayoutParams.WRAP_CONTENT;
                         dialogWindow.setAttributes(lp);
                     }
-                    mDialog.setContentView(viewDialog);
-                    mDialogAdapter = new DialogAdapter(mFutureInfoActivity, new ArrayList<>(LatestFileManager.getOptionalInsList().keySet()));
-                    mRecyclerView = viewDialog.findViewById(R.id.dialog_rv);
-                    mRecyclerView.setLayoutManager(
+                    mDialogOptional.setContentView(viewDialog);
+                    mDialogAdapterOptional = new DialogAdapter(mFutureInfoActivity,
+                            new ArrayList<>(LatestFileManager.getOptionalInsList().keySet()));
+                    mRecyclerViewOptional = viewDialog.findViewById(R.id.dialog_rv);
+                    mRecyclerViewOptional.setLayoutManager(
                             new GridLayoutManager(mFutureInfoActivity, 3));
-                    mRecyclerView.addItemDecoration(
-                            new DividerGridItemDecorationUtils(mFutureInfoActivity));
-                    mRecyclerView.setAdapter(mDialogAdapter);
+                    mRecyclerViewOptional.addItemDecoration(
+                            new DividerGridItemDecorationUtils(mFutureInfoActivity, R.drawable.divider_optional_dialog));
+                    mRecyclerViewOptional.setAdapter(mDialogAdapterOptional);
 
-                    mRecyclerView.addOnItemTouchListener(new SimpleRecyclerViewItemClickListener(mRecyclerView, new SimpleRecyclerViewItemClickListener.OnItemClickListener() {
+                    mRecyclerViewOptional.addOnItemTouchListener(
+                            new SimpleRecyclerViewItemClickListener(mRecyclerViewOptional,
+                                    new SimpleRecyclerViewItemClickListener.OnItemClickListener() {
                         @Override
                         public void onItemClick(View view, int position) {
                             String instrumentId = (String) view.getTag();
@@ -243,7 +320,7 @@ public class FutureInfoActivityPresenter {
                                     EventBus.getDefault().post(idEvent);
                                 }
                             }
-                            mDialog.dismiss();
+                            mDialogOptional.dismiss();
                         }
 
                         @Override
@@ -252,31 +329,34 @@ public class FutureInfoActivityPresenter {
                         }
                     }));
 
-                }
-                if (!mDialog.isShowing()) mDialog.show();
+                }else mDialogAdapterOptional.updateList(new ArrayList<>(LatestFileManager.getOptionalInsList().keySet()));
+
+                if (!mDialogOptional.isShowing()) mDialogOptional.show();
             }
         });
 
-        //图表切换容器监听器
-        mBinding.rgTabUp.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+        mBinding.rvDurationTitle.addOnItemTouchListener(new SimpleRecyclerViewItemClickListener(mBinding.rvDurationTitle, new SimpleRecyclerViewItemClickListener.OnItemClickListener() {
             @Override
-            public void onCheckedChanged(RadioGroup group, int checkedId) {
-                switch (checkedId) {
-                    case R.id.rb_current_day_up:
-                        switchUpFragment(CURRENT_DAY_FRAGMENT);
-                        break;
-                    case R.id.rb_day_up:
-                        switchUpFragment(DAY_FRAGMENT);
-                        break;
-                    case R.id.rb_hour_up:
-                        switchUpFragment(HOUR_FRAGMENT);
-                        break;
-                    case R.id.rb_minute_up:
-                        switchUpFragment(MINUTE_FRAGMENT);
-                        break;
-                    default:
-                        break;
-                }
+            public void onItemClick(View view, int position) {
+                mKlineDurationTitleAdapter.update(position);
+                TextView title = view.findViewById(R.id.duration_title);
+                String durationTitle = title.getText().toString();
+                switchDuration(durationTitle);
+            }
+
+            @Override
+            public void onItemLongClick(View view, int position) {
+
+            }
+        }));
+
+        mBinding.rbKlineMore.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int position = mKlineDurationTitleAdapter.next();
+                mBinding.rvDurationTitle.scrollToPosition(position);
+                String durationTitle = mKlineDurationTitleAdapter.getDurationTitle();
+                switchDuration(durationTitle);
             }
         });
 
@@ -290,6 +370,7 @@ public class FutureInfoActivityPresenter {
                     mPosition = view.findViewById(R.id.position);
                     mPending = view.findViewById(R.id.pending);
                     mAverage = view.findViewById(R.id.average_line);
+                    mMD5 = view.findViewById(R.id.md);
                     mPopupWindow = new PopupWindow(view,
                             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, true);
                     //点击空白处popupWindow消失
@@ -301,11 +382,12 @@ public class FutureInfoActivityPresenter {
                     mPosition.setChecked(mIsPosition);
                     mPending.setChecked(mIsPending);
                     mAverage.setChecked(mIsAverage);
+                    mMD5.setChecked(mIsMD5);
 
                     mPosition.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                         @Override
                         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                            SPUtils.putAndApply(sContext, "isPosition", isChecked);
+                            SPUtils.putAndApply(sContext, CONFIG_POSITION_LINE, isChecked);
                             mIsPosition = isChecked;
                             SetUpEvent setUpEvent = new SetUpEvent();
                             setUpEvent.setPosition(mIsPosition);
@@ -318,7 +400,7 @@ public class FutureInfoActivityPresenter {
                     mPending.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                         @Override
                         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                            SPUtils.putAndApply(sContext, "isPending", isChecked);
+                            SPUtils.putAndApply(sContext, CONFIG_ORDER_LINE, isChecked);
                             mIsPending = isChecked;
                             SetUpEvent setUpEvent = new SetUpEvent();
                             setUpEvent.setPending(mIsPending);
@@ -331,13 +413,25 @@ public class FutureInfoActivityPresenter {
                     mAverage.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
                         @Override
                         public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                            SPUtils.putAndApply(sContext, "isAverage", isChecked);
+                            SPUtils.putAndApply(sContext, CONFIG_AVERAGE_LINE, isChecked);
                             mIsAverage = isChecked;
                             SetUpEvent setUpEvent = new SetUpEvent();
                             setUpEvent.setAverage(mIsAverage);
                             setUpEvent.setPending(mIsPending);
                             setUpEvent.setPosition(mIsPosition);
                             EventBus.getDefault().post(setUpEvent);
+                        }
+                    });
+
+                    mMD5.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+                        @Override
+                        public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                            SPUtils.putAndApply(sContext, CONFIG_MD5, isChecked);
+                            mIsMD5 = isChecked;
+                            if (mInstrumentId.contains("SHFE") || mInstrumentId.contains("INE")){
+                                if (mIsMD5) mBinding.md.setVisibility(View.VISIBLE);
+                                else mBinding.md.setVisibility(View.GONE);
+                            }
                         }
                     });
                 }
@@ -382,49 +476,95 @@ public class FutureInfoActivityPresenter {
             }
         });
 
-        //RadioGroup点击的时让viewpager跟着切换
-        mBinding.rgTabInfo.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
-
+        mBinding.rbHandicapInfo.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onCheckedChanged(RadioGroup radioGroup, int checkId) {
-                switch (checkId) {
-                    case R.id.rb_handicap_info:
-                        mBinding.vpInfoContent.setCurrentItem(0, false);
-                        break;
-                    case R.id.rb_position_info:
-                        if (!DataManager.getInstance().IS_LOGIN) {
-                            Intent intent = new Intent(mFutureInfoActivity, LoginActivity.class);
-                            //判断从哪个页面跳到登录页，登录页的销毁方式不一样
-                            intent.putExtra(ACTIVITY_TYPE, "FutureInfoActivity");
-                            mFutureInfoActivity.startActivityForResult(intent, POSITION_JUMP_TO_LOG_IN_ACTIVITY);
-                            break;
-                        }
-                        mBinding.vpInfoContent.setCurrentItem(1, false);
-                        break;
-                    case R.id.rb_order_info:
-                        if (!DataManager.getInstance().IS_LOGIN) {
-                            Intent intent = new Intent(mFutureInfoActivity, LoginActivity.class);
-                            intent.putExtra(ACTIVITY_TYPE, "FutureInfoActivity");
-                            mFutureInfoActivity.startActivityForResult(intent, ORDER_JUMP_TO_LOG_IN_ACTIVITY);
-                            break;
-                        }
-                        mBinding.vpInfoContent.setCurrentItem(2, false);
-                        break;
-                    case R.id.rb_transaction_info:
-                        if (!DataManager.getInstance().IS_LOGIN) {
-                            Intent intent = new Intent(mFutureInfoActivity, LoginActivity.class);
-                            intent.putExtra(ACTIVITY_TYPE, "FutureInfoActivity");
-                            mFutureInfoActivity.startActivityForResult(intent, TRANSACTION_JUMP_TO_LOG_IN_ACTIVITY);
-                            break;
-                        }
-                        mBinding.vpInfoContent.setCurrentItem(3, false);
-                        break;
-                    default:
-                        break;
-                }
+            public void onClick(View v) {
+                controlTransactionPageVisibility(0);
             }
         });
 
+        mBinding.rbPositionInfo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!DataManager.getInstance().IS_LOGIN) {
+                    Intent intent = new Intent(mFutureInfoActivity, LoginActivity.class);
+                    //判断从哪个页面跳到登录页，登录页的销毁方式不一样
+                    intent.putExtra(ACTIVITY_TYPE, "FutureInfoActivity");
+                    mFutureInfoActivity.startActivityForResult(intent, POSITION_JUMP_TO_LOG_IN_ACTIVITY);
+                    return;
+                }
+                controlTransactionPageVisibility(1);
+            }
+        });
+
+        mBinding.rbOrderInfo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!DataManager.getInstance().IS_LOGIN) {
+                    Intent intent = new Intent(mFutureInfoActivity, LoginActivity.class);
+                    intent.putExtra(ACTIVITY_TYPE, "FutureInfoActivity");
+                    mFutureInfoActivity.startActivityForResult(intent, ORDER_JUMP_TO_LOG_IN_ACTIVITY);
+                    return;
+                }
+                controlTransactionPageVisibility(2);
+            }
+        });
+
+        mBinding.rbTransactionInfo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!DataManager.getInstance().IS_LOGIN) {
+                    Intent intent = new Intent(mFutureInfoActivity, LoginActivity.class);
+                    intent.putExtra(ACTIVITY_TYPE, "FutureInfoActivity");
+                    mFutureInfoActivity.startActivityForResult(intent, TRANSACTION_JUMP_TO_LOG_IN_ACTIVITY);
+                    return;
+                }
+                controlTransactionPageVisibility(3);
+            }
+        });
+
+    }
+
+    /**
+     * date: 2019/2/20
+     * author: chenli
+     * description: 控制交易相关页的显示
+     */
+    public void controlTransactionPageVisibility(int index){
+        VisibilityEvent data = new VisibilityEvent();
+        if (mBinding.vpInfoContent.getCurrentItem() == index){
+            if (mBinding.vpInfoContent.getVisibility() == View.GONE){
+                mBinding.vpInfoContent.setVisibility(View.VISIBLE);
+                mBinding.rbHandicapInfo.setText(R.string.future_info_activity_handicap_down);
+                mBinding.rbPositionInfo.setText(R.string.future_info_activity_position_down);
+                mBinding.rbOrderInfo.setText(R.string.future_info_activity_order_down);
+                mBinding.rbTransactionInfo.setText(R.string.future_info_activity_transaction_down);
+                data.setVisible(false);
+                EventBus.getDefault().post(data);
+                DataManager.getInstance().IS_SHOW_VP_CONTENT = true;
+            }else {
+                mBinding.vpInfoContent.setVisibility(View.GONE);
+                mBinding.rbHandicapInfo.setText(R.string.future_info_activity_handicap_up);
+                mBinding.rbPositionInfo.setText(R.string.future_info_activity_position_up);
+                mBinding.rbOrderInfo.setText(R.string.future_info_activity_order_up);
+                mBinding.rbTransactionInfo.setText(R.string.future_info_activity_transaction_up);
+                data.setVisible(true);
+                EventBus.getDefault().post(data);
+                DataManager.getInstance().IS_SHOW_VP_CONTENT = false;
+            }
+        }else{
+            if (mBinding.vpInfoContent.getVisibility() == View.GONE){
+                mBinding.vpInfoContent.setVisibility(View.VISIBLE);
+                mBinding.rbHandicapInfo.setText(R.string.future_info_activity_handicap_down);
+                mBinding.rbPositionInfo.setText(R.string.future_info_activity_position_down);
+                mBinding.rbOrderInfo.setText(R.string.future_info_activity_order_down);
+                mBinding.rbTransactionInfo.setText(R.string.future_info_activity_transaction_down);
+                data.setVisible(false);
+                EventBus.getDefault().post(data);
+                DataManager.getInstance().IS_SHOW_VP_CONTENT = true;
+            }
+            mBinding.vpInfoContent.setCurrentItem(index, false);
+        }
     }
 
     /**
@@ -443,65 +583,21 @@ public class FutureInfoActivityPresenter {
             mFutureInfoActivity.finish();
     }
 
-    /**
-     * date: 7/7/17
-     * author: chenli
-     * description: 注册网络状态广播监听器，检测手机网络状态，断网状态下在toolbar上提示用户网络已断开
-     */
-    public void registerBroaderCast() {
-        mReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                int networkStatus = intent.getIntExtra("networkStatus", 0);
-                switch (networkStatus) {
-                    case 0:
-                        mToolbar.setBackgroundColor(ContextCompat.getColor(context, R.color.off_line));
-                        mToolbarTitle.setTextColor(Color.BLACK);
-                        mToolbarTitle.setText("交易、行情网络未连接！");
-                        mToolbarTitle.setCompoundDrawables(null, null, null, null);
-                        mToolbarTitle.setBackgroundColor(ContextCompat.getColor(context, R.color.off_line));
-                        break;
-                    case 1:
-                        mToolbar.setBackgroundColor(ContextCompat.getColor(context, R.color.black_dark));
-                        mToolbarTitle.setTextColor(Color.WHITE);
-                        setToolbarTitle();
-                        mToolbarTitle.setCompoundDrawables(null, null, mRightDrawable, null);
-                        mToolbarTitle.setBackgroundColor(ContextCompat.getColor(context, R.color.title));
-                        break;
-                }
-            }
-        };
-        mFutureInfoActivity.registerReceiver(mReceiver, new IntentFilter(NETWORK_STATE));
-    }
-
     public void setToolbarTitle() {
         SearchEntity searchEntity = LatestFileManager.getSearchEntities().get(mInstrumentId);
-        if (searchEntity != null){
-            if (mInstrumentId.contains("KQ")){
+        if (searchEntity != null) {
+            if (mInstrumentId.contains("KQ")) {
                 String underlying_symbol = searchEntity.getUnderlying_symbol();
                 SearchEntity searchEntity1 = LatestFileManager.getSearchEntities().get(underlying_symbol);
 
                 if (searchEntity1 != null) mToolbarTitle.setText(searchEntity1.getInstrumentName());
                 else mToolbarTitle.setText(underlying_symbol);
-            }else {
+            } else {
                 String instrument_name = searchEntity.getInstrumentName();
                 mToolbarTitle.setText(instrument_name);
             }
 
         } else mToolbarTitle.setText(mInstrumentId);
-    }
-
-    /**
-     * date: 7/7/17
-     * author: chenli
-     * description: 注销广播
-     */
-    public void unRegisterBroaderCast() {
-        if (mReceiver != null) mFutureInfoActivity.unregisterReceiver(mReceiver);
-    }
-
-    public void refreshOptionalQuotesPopup(ArrayList arrayList) {
-        if (mDialogAdapter != null) mDialogAdapter.updateList(arrayList);
     }
 
     public boolean closeKeyboard() {
@@ -523,27 +619,6 @@ public class FutureInfoActivityPresenter {
         return false;
     }
 
-    /**
-     * date: 7/9/17
-     * author: chenli
-     * description: 检查网络状态，更新toolbar的显示
-     */
-    public void updateToolbarFromNetwork() {
-        if (NetworkUtils.isNetworkConnected(sContext)) {
-            mToolbar.setBackgroundColor(ContextCompat.getColor(sContext, R.color.black_dark));
-            mToolbarTitle.setTextColor(Color.WHITE);
-            setToolbarTitle();
-            mToolbarTitle.setCompoundDrawables(null, null, mRightDrawable, null);
-            mToolbarTitle.setBackgroundColor(ContextCompat.getColor(sContext, R.color.title));
-        } else {
-            mToolbar.setBackgroundColor(ContextCompat.getColor(sContext, R.color.off_line));
-            mToolbarTitle.setTextColor(Color.BLACK);
-            mToolbarTitle.setText("交易、行情网络未连接！");
-            mToolbarTitle.setCompoundDrawables(null, null, null, null);
-            mToolbarTitle.setBackgroundColor(ContextCompat.getColor(sContext, R.color.off_line));
-        }
-    }
-
     public boolean isPosition() {
         return mIsPosition;
     }
@@ -560,26 +635,38 @@ public class FutureInfoActivityPresenter {
         return mInstrumentId;
     }
 
+    public void setInstrumentId(String instrumentId) {
+        mInstrumentId = instrumentId;
+    }
+
+    private void switchDuration(String durationTitle) {
+
+        if ("分时图".equals(durationTitle))switchUpFragment(CURRENT_DAY_FRAGMENT, "");
+        else{
+            String duration = getDuration(durationTitle);
+            if (durationTitle.contains("秒")){
+                switchUpFragment(SECOND_FRAGMENT, duration);
+            }else if (durationTitle.contains("分")){
+                switchUpFragment(MINUTE_FRAGMENT, duration);
+            }else if (durationTitle.contains("时")){
+                switchUpFragment(HOUR_FRAGMENT, duration);
+            }else {
+                switchUpFragment(DAY_FRAGMENT, duration);
+            }
+        }
+    }
+
     /**
      * date: 7/7/17
      * author: chenli
-     * description: 用于切换图表页，由于性能影响，不保存图表页实例
+     * description: 用于切换图表页，保存单例
      */
-    private void switchUpFragment(String title) {
+    private void switchUpFragment(String title, String klineType) {
         FragmentTransaction transaction = mFragmentManager.beginTransaction();
-        Fragment fragment = mFragmentManager.findFragmentByTag(title);
-        if (fragment == null) {
-            transaction.hide(mCurFragment);
-            fragment = createFragmentByTitle(title);
-            transaction.add(R.id.fl_content_up, fragment, title);
-            mCurFragment = fragment;
-        } else if (fragment != mCurFragment) {
-            transaction.hide(mCurFragment).show(fragment);
-            mCurFragment = fragment;
-        }
+        BaseChartFragment fragment = createFragmentByTitle(title, klineType);
+        transaction.replace(R.id.fl_content_up, fragment, title);
         transaction.setTransition(FragmentTransaction.TRANSIT_FRAGMENT_OPEN).
                 commit();
-
     }
 
     /**
@@ -587,18 +674,34 @@ public class FutureInfoActivityPresenter {
      * author: chenli
      * description: 根据title返回对应的fragment
      */
-    private Fragment createFragmentByTitle(String title) {
+    private BaseChartFragment createFragmentByTitle(String title, String klineType) {
         switch (title) {
             case CURRENT_DAY_FRAGMENT:
                 return new CurrentDayFragment();
             case DAY_FRAGMENT:
-                return KlineFragment.newInstance("yy/MM/dd", KLINE_DAY);
+                return KlineFragment.newInstance("yy/MM/dd", klineType, DAY_FRAGMENT);
             case HOUR_FRAGMENT:
-                return KlineFragment.newInstance("dd/HH:mm", KLINE_HOUR);
+                return KlineFragment.newInstance("dd/HH:mm", klineType, HOUR_FRAGMENT);
             case MINUTE_FRAGMENT:
-                return KlineFragment.newInstance("dd/HH:mm", KLINE_MINUTE);
+                return KlineFragment.newInstance("dd/HH:mm", klineType, MINUTE_FRAGMENT);
+            case SECOND_FRAGMENT:
+                return KlineFragment.newInstance("HH:mm:ss", klineType, SECOND_FRAGMENT);
             default:
                 return null;
         }
+    }
+
+    private String getDurationTitle(String data){
+        for (int i = 0; i < mKlineDuration.length; i++){
+            if (mKlineDuration[i].equals(data))return mKlineTitle[i];
+        }
+        return "";
+    }
+
+    private String getDuration(String data){
+        for (int i = 0; i < mKlineTitle.length; i++){
+            if (mKlineTitle[i].equals(data))return mKlineDuration[i];
+        }
+        return "";
     }
 }
